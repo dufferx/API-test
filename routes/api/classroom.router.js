@@ -62,5 +62,10 @@ router.post('/upload', upload.single('image'),(req,res) =>{
 
 })
 
+router.get("/classroom/find/pagination/student/:classroomId",
+  classroomValidators.findStudentsByClassroomIdValidator,
+  runValidations,
+  classroomController.getAllStudentsByClassroomId
+);
 
 module.exports = router;

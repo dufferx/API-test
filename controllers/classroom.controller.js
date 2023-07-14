@@ -2,6 +2,7 @@ const Classroom = require("../models/Classroom.model");
 const Teacher = require("../models/Teacher.model");
 const Functions = require("../utils/functions.tools");
 const debug = require("debug")("app:classroom-controller");
+const Student = require("../models/Student.model");
 
 
 const controller = {};
@@ -394,6 +395,47 @@ controller.addStudentToClassroom = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Internal server error." });
+  }
+};
+
+controller.getAllStudentsByClassroomId = async (req, res) => {
+  try {
+    let { page = 1, limit = 10 } = req.query;
+    page = parseInt(page);
+    limit = parseInt(limit);
+    const { classroomId } = req.params;
+
+    const classroom = await Classroom.findById(classroomId);
+    if (!classroom) {
+      return res.status(404).json({ error: "Classroom not found" });
+    }
+
+    const totalStudents = classroom.student.length;
+    const totalPages = Math.ceil(totalStudents / limit);
+
+    const students = await Student.find({ _id: { $in: classroom.student } })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .select("_id name avatar");
+
+    const nextOffset = page * limit;
+    const previousOffset = (page - 2) * limit;
+
+    const baseUrl = `${req.protocol}://${req.get("host")}${req.baseUrl}`;
+    const nextUrl = nextOffset <= totalStudents ? `${baseUrl}?page=${page + 1}&limit=${limit}` : null;
+    const previousUrl = previousOffset >= 0 ? `${baseUrl}?page=${page - 1}&limit=${limit}` : null;
+
+    return res.status(200).json({
+      students,
+      totalStudents,
+      totalPages,
+      currentPage: page,
+      next: nextUrl,
+      previous: previousUrl,
+    });
+  } catch (error) {
+    debug({ error });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
